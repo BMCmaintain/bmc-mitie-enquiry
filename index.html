@@ -7,10 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* ---- SETTINGS ----
-     Enquiries are emailed via FormSubmit (formsubmit.co) to the address below.
-     The very first submission sends a one-off activation email to this address –
-     click "Activate" in it and every enquiry after that arrives straight away. */
+  /* Enquiries are sent to the "BMC Mitie Enquiry" Google Apps Script
+     (bmcmaintain6@gmail.com), which emails them to clive.mallender@bmc-ltd.co.uk. */
   :root{
     --bmc-red:#d2232a;
     --bmc-red-dark:#a91b21;
@@ -109,11 +107,13 @@
 </div>
 
 <script>
-  const SEND_TO = 'clive.mallender@bmc-ltd.co.uk';
+  const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwFRp84LXEwDSHXd3uPi2aWrT12NIiVo7DqoKuWGINKgxEpls2C6RQji4EJ2IEFF_Tz2g/exec';
+  const CONTACT = 'clive.mallender@bmc-ltd.co.uk';
 
   const form = document.getElementById('enquiry');
   const btn = document.getElementById('submitBtn');
   const errorBox = document.getElementById('errorBox');
+  const val = id => document.getElementById(id).value.trim();
 
   function showError(msg){ errorBox.textContent = msg; errorBox.style.display = 'block'; }
 
@@ -121,34 +121,24 @@
     e.preventDefault();
     errorBox.style.display = 'none';
 
-    const required = [...form.querySelectorAll('[required]')];
-    const empty = required.find(f => !f.value.trim());
+    const empty = [...form.querySelectorAll('[required]')].find(f => !f.value.trim());
     if (empty){ empty.focus(); showError('Please fill in all fields.'); return; }
-    const email = form.email.value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ form.email.focus(); showError('Please enter a valid email address.'); return; }
-
-    const data = Object.fromEntries(new FormData(form).entries());
-    if (data._honey) return; // bot
-    data['Email address'] = email;
-    data._subject = 'New Mitie enquiry – ' + data['Contact name'];
-    data._template = 'table';
-    data._replyto = email;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('email'))){ form.email.focus(); showError('Please enter a valid email address.'); return; }
+    if (form._honey.value) return; // bot
 
     btn.disabled = true; btn.textContent = 'Sending…';
     try {
-      const res = await fetch('https://formsubmit.co/ajax/' + SEND_TO, {
+      await fetch(ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(data)
+        mode: 'no-cors',
+        body: new URLSearchParams({ name: val('name'), email: val('email'), position: val('position'), project: val('project') })
       });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok || out.success === 'false' || out.success === false) throw new Error(out.message || 'Send failed');
       document.getElementById('formView').style.display = 'none';
       document.getElementById('thanksView').style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Send enquiry';
-      showError("Sorry, that didn't send. Please try again, or email us at " + SEND_TO + '.');
+      showError("Sorry, that didn't send. Please try again, or email us at " + CONTACT + '.');
     }
   });
 </script>
